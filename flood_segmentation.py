@@ -1,107 +1,138 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torchvision.transforms.functional as TF
-from torch.utils.data import DataLoader, Dataset
-from PIL import Image
+import torchvision
 import os
+from PIL import Image
 import matplotlib.pyplot as plt
+import numpy as np
 from sklearn.model_selection import train_test_split
 from unet import UNet
 
-# --- Dataset personalizado ---
-class FloodDataset(Dataset):
-    def _init_(self, image_paths, mask_paths):
-        self.image_paths = image_paths
-        self.mask_paths = mask_paths
+# --- Configurar dispositivo ---
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(f"Usando dispositivo: {device}")
 
-    def _len_(self):
-        return len(self.image_paths)
-
-    def _getitem_(self, idx):
-        # Imagen RGB garantizada
-        image = Image.open(self.image_paths[idx]).convert("RGB")
-        image = TF.pil_to_tensor(image).float() / 255.0  # [3, H, W]
-        image = TF.resize(image, (100, 100))
-
-        # Máscara monocanal
-        mask = Image.open(self.mask_paths[idx])
-        mask = TF.pil_to_tensor(mask)[0].unsqueeze(0)  # [1, H, W]
-        mask = TF.resize(mask, (100, 100))
-        mask = mask.squeeze(0)                         # [H, W]
-        mask = (mask > 0).long()                       # binarización
-
-        return image, mask
-
-
-# --- Carga de rutas de imágenes y máscaras ---
+# --- Carga y preprocesamiento de imágenes y máscaras ---
 image_dir = './data/Image/'
 mask_dir = './data/Mask/'
 
-image_files = sorted([os.path.join(image_dir, f) for f in os.listdir(image_dir) if f.endswith('.jpg')])
-mask_files = sorted([os.path.join(mask_dir, f.replace('.jpg', '.png')) for f in os.listdir(image_dir) if f.endswith('.jpg')])
+images = os.listdir(image_dir)
+image_tensor = []
+masks_tensor = []
 
-# --- División en entrenamiento y validación ---
-train_imgs, val_imgs, train_masks, val_masks = train_test_split(image_files, mask_files, test_size=0.2, random_state=42)
+for image_name in images:
+    image_path = os.path.join(image_dir, image_name)
+    img = Image.open(image_path)
+    img_tensor = torchvision.transforms.functional.pil_to_tensor(img)
+    img_tensor = torchvision.transforms.functional.resize(img_tensor, (100, 100))
+    img_tensor = img_tensor[None, :, :, :]
+    img_tensor = torch.tensor(img_tensor, dtype=torch.float) / 255.
 
-train_dataset = FloodDataset(train_imgs, train_masks)
-val_dataset = FloodDataset(val_imgs, val_masks)
+    if img_tensor.shape != (1, 3, 100, 100):
+        continue
 
-train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=16)
+    # Máscara correspondiente
+    mask_name = image_name.replace('.jpg', '.png')
+    mask_path = os.path.join(mask_dir, mask_name)
+    mask_img = Image.open(mask_path)
+    mask_tensor = torchvision.transforms.functional.pil_to_tensor(mask_img)
+    mask_tensor = torchvision.transforms.functional.resize(mask_tensor, (100, 100))
+    mask_tensor = mask_tensor[:1, :, :]  # Usar solo un canal
+    mask_tensor = (mask_tensor > 0).long().squeeze(0)  # shape (100, 100)
 
-# --- Modelo, pérdida, optimizador ---
-model = UNet(n_channels=3, n_classes=2)
-criterion = nn.CrossEntropyLoss()
+    image_tensor.append(img_tensor)
+    masks_tensor.append(mask_tensor)
+
+# --- División en train/test ---
+image_tensor = torch.cat(image_tensor)
+masks_tensor = torch.stack(masks_tensor)
+
+indices = list(range(len(image_tensor)))
+train_idx, val_idx = train_test_split(indices, test_size=0.2, random_state=42)
+
+train_images = image_tensor[train_idx]
+train_masks = masks_tensor[train_idx]
+val_images = image_tensor[val_idx]
+val_masks = masks_tensor[val_idx]
+
+train_loader = torch.utils.data.DataLoader(list(zip(train_images, train_masks)), batch_size=64)
+val_loader = torch.utils.data.DataLoader(list(zip(val_images, val_masks)), batch_size=64)
+
+# --- Cálculo automático de pesos de clase ---
+all_masks = torch.cat([train_masks, val_masks], dim=0)
+class_0_count = (all_masks == 0).sum().item()
+class_1_count = (all_masks == 1).sum().item()
+total = class_0_count + class_1_count
+
+weight_0 = total / (2.0 * class_0_count)
+weight_1 = total / (2.0 * class_1_count)
+class_weights = torch.tensor([weight_0, weight_1], dtype=torch.float).to(device)
+
+print(f"Pesos calculados: Clase 0 = {weight_0:.4f}, Clase 1 = {weight_1:.4f}")
+
+# --- Configuración del modelo ---
+model = UNet(n_channels=3, n_classes=2).to(device)
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
+criterion = nn.CrossEntropyLoss(weight=class_weights)
 
-# --- Entrenamiento ---
-num_epochs = 5
+# --- Entrenamiento y evaluación ---
+num_epochs = 20
 train_loss_list, val_loss_list = [], []
 train_jaccard_list, val_jaccard_list = [], []
 
 for epoch in range(num_epochs):
     model.train()
-    train_loss, train_jaccard = 0.0, []
+    running_loss = 0.0
+    jaccard_epoch = []
 
     for x, y in train_loader:
+        x = x.to(device)
+        y = y.to(device)
         optimizer.zero_grad()
-        pred = model(x)  # [B, 2, H, W]
-        loss = criterion(pred, y)  # y: [B, H, W]
+        pred = model(x)
+        loss = criterion(pred, y)
         loss.backward()
         optimizer.step()
-        train_loss += loss.item()
+        running_loss += loss.item()
 
-        pred_classes = torch.argmax(pred, dim=1)
-        jaccard = torch.mean((pred_classes == y).float(), dim=(1, 2))  # Simplificado
-        train_jaccard.append(jaccard.mean().item())
+        _, pred_flat = torch.max(pred, 1)
+        y_flat = y
+        intersection = torch.sum(pred_flat == y_flat, dim=(1, 2)) / 10000.0
+        jaccard_epoch.append(torch.mean(intersection).detach())
 
-    train_loss /= len(train_loader)
-    train_jaccard_mean = sum(train_jaccard) / len(train_jaccard)
+    train_loss = running_loss / len(train_loader)
+    train_jaccard = sum(jaccard_epoch) / len(jaccard_epoch)
     train_loss_list.append(train_loss)
-    train_jaccard_list.append(train_jaccard_mean)
+    train_jaccard_list.append(train_jaccard)
 
+    # --- Evaluación ---
     model.eval()
-    val_loss, val_jaccard = 0.0, []
+    val_loss = 0.0
+    val_jaccard_epoch = []
 
     with torch.no_grad():
         for x, y in val_loader:
+            x = x.to(device)
+            y = y.to(device)
             pred = model(x)
             loss = criterion(pred, y)
             val_loss += loss.item()
 
-            pred_classes = torch.argmax(pred, dim=1)
-            jaccard = torch.mean((pred_classes == y).float(), dim=(1, 2))
-            val_jaccard.append(jaccard.mean().item())
+            _, pred_flat = torch.max(pred, 1)
+            y_flat = y
+            intersection = torch.sum(pred_flat == y_flat, dim=(1, 2)) / 10000.0
+            val_jaccard_epoch.append(torch.mean(intersection).detach())
 
-    val_loss /= len(val_loader)
-    val_jaccard_mean = sum(val_jaccard) / len(val_jaccard)
+    val_loss = val_loss / len(val_loader)
+    val_jaccard = sum(val_jaccard_epoch) / len(val_jaccard_epoch)
     val_loss_list.append(val_loss)
-    val_jaccard_list.append(val_jaccard_mean)
+    val_jaccard_list.append(val_jaccard)
 
+    # --- Imprimir métricas ---
     print(f"Época [{epoch+1}/{num_epochs}] - "
           f"Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f} | "
-          f"Train Jaccard: {train_jaccard_mean:.4f}, Val Jaccard: {val_jaccard_mean:.4f}")
+          f"Train Jaccard: {train_jaccard:.4f}, Val Jaccard: {val_jaccard:.4f}")
 
 # --- Guardar gráficas ---
 plt.figure(figsize=(10, 5))
