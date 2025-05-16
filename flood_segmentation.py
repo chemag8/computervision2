@@ -10,8 +10,8 @@ from sklearn.model_selection import train_test_split
 from unet import UNet
 
 # --- Carga y preprocesamiento de imágenes y máscaras ---
-image_dir = './Actividad_2/data/Image/'
-mask_dir = './Actividad_2/data/Mask/'
+image_dir = './data/Image/'
+mask_dir = './data/Mask/'
 
 images = os.listdir(image_dir)
 image_tensor = []
