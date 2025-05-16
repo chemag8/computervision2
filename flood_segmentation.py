@@ -58,7 +58,7 @@ val_loader = torch.utils.data.DataLoader(list(zip(val_images, val_masks)), batch
 # --- Configuración del modelo ---
 model = UNet(n_channels=3, n_classes=2)
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
-criterion = nn.CrossEntropyLoss()
+criterion = nn.CrossEntropyLoss(reduction='mean')
 
 # --- Entrenamiento y evaluación ---
 num_epochs = 20
