@@ -10,8 +10,8 @@ from sklearn.model_selection import train_test_split
 from unet import UNet
 
 # --- Carga y preprocesamiento de imágenes y máscaras ---
-image_dir = './data/Image/'
-mask_dir = './data/Mask/'
+image_dir = './Actividad_2/data/Image/'
+mask_dir = './Actividad_2/data/Mask/'
 
 images = os.listdir(image_dir)
 image_tensor = []
@@ -33,17 +33,16 @@ for image_name in images:
     mask_path = os.path.join(mask_dir, mask_name)
     mask_img = Image.open(mask_path)
     mask_tensor = torchvision.transforms.functional.pil_to_tensor(mask_img)
-    mask_tensor = mask_tensor.repeat(3, 1, 1)
     mask_tensor = torchvision.transforms.functional.resize(mask_tensor, (100, 100))
-    mask_tensor = mask_tensor[:1, :, :]
-    mask_tensor = (mask_tensor > 0).long().squeeze(0)
+    mask_tensor = mask_tensor[:1, :, :]  # Usar solo un canal
+    mask_tensor = (mask_tensor > 0).long().squeeze(0)  # shape (100, 100) con valores 0 o 1
 
     image_tensor.append(img_tensor)
     masks_tensor.append(mask_tensor)
 
 # --- División en train/test ---
 image_tensor = torch.cat(image_tensor)
-masks_tensor = torch.cat(masks_tensor)
+masks_tensor = torch.stack(masks_tensor)
 
 indices = list(range(len(image_tensor)))
 train_idx, val_idx = train_test_split(indices, test_size=0.2, random_state=42)
@@ -80,7 +79,7 @@ for epoch in range(num_epochs):
         running_loss += loss.item()
 
         _, pred_flat = torch.max(pred, 1)
-        _, y_flat = torch.max(y, 1)
+        y_flat = y
         intersection = torch.sum(pred_flat == y_flat, dim=(1, 2)) / 10000.0
         jaccard_epoch.append(torch.mean(intersection).detach())
 
@@ -101,7 +100,7 @@ for epoch in range(num_epochs):
             val_loss += loss.item()
 
             _, pred_flat = torch.max(pred, 1)
-            _, y_flat = torch.max(y, 1)
+            y_flat = y
             intersection = torch.sum(pred_flat == y_flat, dim=(1, 2)) / 10000.0
             val_jaccard_epoch.append(torch.mean(intersection).detach())
 
@@ -109,7 +108,7 @@ for epoch in range(num_epochs):
     val_jaccard = sum(val_jaccard_epoch) / len(val_jaccard_epoch)
     val_jaccard_list.append(val_jaccard)
 
-    # 🎉 Aquí el print sexy de la época
+    # --- Imprimir métricas ---
     print(f"Época [{epoch+1}/{num_epochs}] - "
           f"Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f} | "
           f"Train Jaccard: {train_jaccard:.4f}, Val Jaccard: {val_jaccard:.4f}")
