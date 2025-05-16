@@ -36,10 +36,7 @@ for image_name in images:
     mask_tensor = mask_tensor.repeat(3, 1, 1)
     mask_tensor = torchvision.transforms.functional.resize(mask_tensor, (100, 100))
     mask_tensor = mask_tensor[:1, :, :]
-    mask_tensor = torch.tensor((mask_tensor > 0).detach().numpy(), dtype=torch.long)
-    mask_tensor = torch.nn.functional.one_hot(mask_tensor)
-    mask_tensor = torch.permute(mask_tensor, (0, 3, 1, 2))
-    mask_tensor = torch.tensor(mask_tensor, dtype=torch.float)
+    mask_tensor = (mask_tensor > 0).long().squeeze(0)
 
     image_tensor.append(img_tensor)
     masks_tensor.append(mask_tensor)
