@@ -55,10 +55,22 @@ val_masks = masks_tensor[val_idx]
 train_loader = torch.utils.data.DataLoader(list(zip(train_images, train_masks)), batch_size=64)
 val_loader = torch.utils.data.DataLoader(list(zip(val_images, val_masks)), batch_size=64)
 
+# --- Cálculo automático de pesos de clase ---
+all_masks = torch.cat([train_masks, val_masks], dim=0)
+class_0_count = (all_masks == 0).sum().item()
+class_1_count = (all_masks == 1).sum().item()
+total = class_0_count + class_1_count
+
+weight_0 = total / (2.0 * class_0_count)
+weight_1 = total / (2.0 * class_1_count)
+class_weights = torch.tensor([weight_0, weight_1], dtype=torch.float)
+
+print(f"Pesos calculados para CrossEntropyLoss: Clase 0 = {weight_0:.4f}, Clase 1 = {weight_1:.4f}")
+
 # --- Configuración del modelo ---
 model = UNet(n_channels=3, n_classes=2)
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
-criterion = nn.CrossEntropyLoss(reduction='mean')
+criterion = nn.CrossEntropyLoss(weight=class_weights)
 
 # --- Entrenamiento y evaluación ---
 num_epochs = 20
