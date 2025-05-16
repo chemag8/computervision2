@@ -103,8 +103,8 @@ for epoch in range(num_epochs):
 
     train_loss = running_loss / len(train_loader)
     train_jaccard = sum(jaccard_epoch) / len(jaccard_epoch)
-    train_loss_list.append(train_loss)
-    train_jaccard_list.append(train_jaccard)
+    train_loss_list.append(float(train_loss))
+    train_jaccard_list.append(train_jaccard.cpu().item())
 
     # --- Evaluación ---
     model.eval()
@@ -126,8 +126,8 @@ for epoch in range(num_epochs):
 
     val_loss = val_loss / len(val_loader)
     val_jaccard = sum(val_jaccard_epoch) / len(val_jaccard_epoch)
-    val_loss_list.append(val_loss)
-    val_jaccard_list.append(val_jaccard)
+    val_loss_list.append(float(val_loss))
+    val_jaccard_list.append(val_jaccard.cpu().item())
 
     # --- Imprimir métricas ---
     print(f"Época [{epoch+1}/{num_epochs}] - "
