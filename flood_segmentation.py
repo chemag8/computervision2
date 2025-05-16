@@ -9,6 +9,8 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from unet import UNet
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 # --- Carga y preprocesamiento de imágenes y máscaras ---
 image_dir = './data/Image/'
 mask_dir = './data/Mask/'
