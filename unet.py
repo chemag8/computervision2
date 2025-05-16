@@ -108,8 +108,6 @@ class Up(torch.nn.Module):
         # https://github.com/xiaopeng-liao/Pytorch-UNet/commit/8ebac70e633bac59fc22bb5195e513d5832fb3bd
         x = torch.cat([x2, x1], dim=1)
         x =  self.conv(x)
-
-        x = torch.softmax(x, dim=1)
         return x
 
 
