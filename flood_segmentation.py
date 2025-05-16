@@ -10,8 +10,8 @@ from sklearn.model_selection import train_test_split
 from unet import UNet
 
 # --- Carga y preprocesamiento de imágenes y máscaras ---
-image_dir = './Actividad_2/data/Image/'
-mask_dir = './Actividad_2/data/Mask/'
+image_dir = './data/Image/'
+mask_dir = './data/Mask/'
 
 images = os.listdir(image_dir)
 image_tensor = []
@@ -87,8 +87,10 @@ for epoch in range(num_epochs):
         intersection = torch.sum(pred_flat == y_flat, dim=(1, 2)) / 10000.0
         jaccard_epoch.append(torch.mean(intersection).detach())
 
-    train_loss_list.append(running_loss)
-    train_jaccard_list.append(sum(jaccard_epoch) / len(jaccard_epoch))
+    train_loss = running_loss
+    train_jaccard = sum(jaccard_epoch) / len(jaccard_epoch)
+    train_loss_list.append(train_loss)
+    train_jaccard_list.append(train_jaccard)
 
     # --- Evaluación ---
     model.eval()
@@ -107,7 +109,13 @@ for epoch in range(num_epochs):
             val_jaccard_epoch.append(torch.mean(intersection).detach())
 
     val_loss_list.append(val_loss)
-    val_jaccard_list.append(sum(val_jaccard_epoch) / len(val_jaccard_epoch))
+    val_jaccard = sum(val_jaccard_epoch) / len(val_jaccard_epoch)
+    val_jaccard_list.append(val_jaccard)
+
+    # 🎉 Aquí el print sexy de la época
+    print(f"Época [{epoch+1}/{num_epochs}] - "
+          f"Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f} | "
+          f"Train Jaccard: {train_jaccard:.4f}, Val Jaccard: {val_jaccard:.4f}")
 
 # --- Guardar gráficas ---
 plt.figure(figsize=(10, 5))
