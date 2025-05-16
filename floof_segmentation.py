@@ -14,8 +14,8 @@ import unet
 
 
 if __name__ == '__main__':
-    images = os.listdir('./Actividad_2/data/Image/')
-    masks = os.listdir('./Actividad_2/data/Mask/')
+    images = os.listdir('./data/Image/')
+    masks = os.listdir('./data/Mask/')
 
     print(len(images), len(masks))
    
@@ -23,7 +23,7 @@ if __name__ == '__main__':
     masks_tensor = list()
 
     for image in images:
-        dd = Image.open(f'./Actividad_2/data/Image/{image}')
+        dd = Image.open(f'./data/Image/{image}')
         tt = torchvision.transforms.functional.pil_to_tensor(dd)
         tt = torchvision.transforms.functional.resize(tt, (100, 100))
 
@@ -36,7 +36,7 @@ if __name__ == '__main__':
         image_tensor.append(tt)
         
 	mask = image.replace('.jpg', '.png')
-	dd = Image.open(f'./Actividad_2/data/Mask/{mask}')
+	dd = Image.open(f'./data/Mask/{mask}')
 	mm = torchvision.transforms.functional.pil_to_tensor(dd)
 	mm = mm.repeat(3, 1, 1)
 	mm = torchvision.transforms.functional.resize(mm, (100, 100))
