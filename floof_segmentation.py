@@ -35,24 +35,24 @@ if __name__ == '__main__':
 
         image_tensor.append(tt)
         
-		mask = image.replace('.jpg', '.png')
-		dd = Image.open(f'./Actividad_2/data/Mask/{mask}')
-		mm = torchvision.transforms.functional.pil_to_tensor(dd)
-		mm = mm.repeat(3, 1, 1)
-		mm = torchvision.transforms.functional.resize(mm, (100, 100))
-		mm = mm[:1, :, :]  # tomamos solo 1 canal
+	mask = image.replace('.jpg', '.png')
+	dd = Image.open(f'./Actividad_2/data/Mask/{mask}')
+	mm = torchvision.transforms.functional.pil_to_tensor(dd)
+	mm = mm.repeat(3, 1, 1)
+	mm = torchvision.transforms.functional.resize(mm, (100, 100))
+	mm = mm[:1, :, :]  # tomamos solo 1 canal
 
-		# Binarizamos: todo píxel > 0 se convierte en clase 1
-		mm = torch.tensor((mm > 0).detach().numpy(), dtype=torch.long)
+	# Binarizamos: todo píxel > 0 se convierte en clase 1
+	mm = torch.tensor((mm > 0).detach().numpy(), dtype=torch.long)
 
-		# One-hot encoding: convertimos cada valor a vector clase
-		mm = torch.nn.functional.one_hot(mm)
+	# One-hot encoding: convertimos cada valor a vector clase
+	mm = torch.nn.functional.one_hot(mm)
 
-		# Rearmamos las dimensiones para PyTorch: (C, H, W)
-		mm = torch.permute(mm, (0, 3, 1, 2))
-		mm = torch.tensor(mm, dtype=torch.float)
+	# Rearmamos las dimensiones para PyTorch: (C, H, W)
+	mm = torch.permute(mm, (0, 3, 1, 2))
+	mm = torch.tensor(mm, dtype=torch.float)
 
-		masks_tensor.append(mm)
+	masks_tensor.append(mm)
     
     # Concatenamos todas las imágenes y máscaras procesadas en tensores
     image_tensor = torch.cat(image_tensor)  # [N, 3, H, W]
