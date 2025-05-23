@@ -10,10 +10,10 @@ from sklearn.model_selection import train_test_split
 from unet import UNet
 
 # --- Confiuración ---
-num_epochs= 20
+num_epochs= 30
 lr = 1e-4
 test_size = 0.2
-batch_size = 32
+batch_size = 64
 
 # --- Dataset personalizado ---
 class FloodDataset(Dataset):
