@@ -11,9 +11,9 @@ from unet import UNet
 
 # --- Confiuración ---
 num_epochs= 30
-lr = 1e-4
+lr = 1e-5
 test_size = 0.2
-batch_size = 16
+batch_size = 32
 
 # --- Dataset personalizado ---
 class FloodDataset(Dataset):
