@@ -97,8 +97,8 @@ for epoch in range(num_epochs):
             val_loss += loss.item()
 
             pred_classes = (torch.sigmoid(pred) > 0.5).float()  # binariza
-        jaccard = torch.mean((pred_classes == y).float(), dim=(1, 2, 3))
-        train_jaccard.append(jaccard.mean().item())
+			jaccard = torch.mean((pred_classes == y).float(), dim=(1, 2, 3))
+			train_jaccard.append(jaccard.mean().item())
 
     val_loss /= len(val_loader)
     val_jaccard_mean = sum(val_jaccard) / len(val_jaccard)
