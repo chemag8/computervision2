@@ -41,8 +41,8 @@ class FloodDataset(Dataset):
 
 
 # --- Carga de rutas de imágenes y máscaras ---
-image_dir = '/data/Image/'
-mask_dir = '/data/Mask/'
+image_dir = 'data/Image/'
+mask_dir = 'data/Mask/'
 
 image_files = sorted([os.path.join(image_dir, f) for f in os.listdir(image_dir) if f.endswith('.jpg')])
 mask_files = sorted([os.path.join(mask_dir, f.replace('.jpg', '.png')) for f in os.listdir(image_dir) if f.endswith('.jpg')])
