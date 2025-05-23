@@ -1,6 +1,3 @@
-import torch
-import torch.nn.functional as F
-
 
 class DoubleConv(torch.nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
@@ -108,14 +105,5 @@ class Up(torch.nn.Module):
         # https://github.com/xiaopeng-liao/Pytorch-UNet/commit/8ebac70e633bac59fc22bb5195e513d5832fb3bd
         x = torch.cat([x2, x1], dim=1)
         x =  self.conv(x)
+
         return x
-
-
-class OutConv(torch.nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super(OutConv, self).__init__()
-        self.conv = torch.nn.Conv2d(in_channels, out_channels, kernel_size=1)
-
-    def forward(self, x):
-        return self.conv(x)
-
