@@ -109,3 +109,12 @@ class Up(torch.nn.Module):
         x =  self.conv(x)
 
         return x
+        
+class OutConv(torch.nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(OutConv, self).__init__()
+        self.conv = torch.nn.Conv2d(in_channels, out_channels, kernel_size=1)
+
+    def forward(self, x):
+        return self.conv(x)
+
