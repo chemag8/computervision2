@@ -35,7 +35,7 @@ class FloodDataset(Dataset):
         mask = TF.pil_to_tensor(mask)[0].unsqueeze(0)  # [1, H, W]
         mask = TF.resize(mask, (100, 100))
         mask = mask.squeeze(0)                         # [H, W]
-        mask = (mask > 0).long()                       # binarización
+        mask = (mask > 0).float().unsqueeze(0)  # [1, H, W] binaria y float
 
         return image, mask
 
@@ -73,13 +73,13 @@ for epoch in range(num_epochs):
     for x, y in train_loader:
         optimizer.zero_grad()
         pred = model(x)  # [B, 2, H, W]
-        loss = criterion(pred, y)  # y: [B, H, W]
+        loss = criterion(pred, y)  # pred: [B, 1, H, W], y: [B, 1, H, W]
         loss.backward()
         optimizer.step()
         train_loss += loss.item()
 
-        pred_classes = torch.argmax(pred, dim=1)
-        jaccard = torch.mean((pred_classes == y).float(), dim=(1, 2))  # Simplificado
+        pred_classes = (torch.sigmoid(pred) > 0.5).float()  # binariza
+        jaccard = torch.mean((pred_classes == y).float(), dim=(1, 2, 3))
         train_jaccard.append(jaccard.mean().item())
 
     train_loss /= len(train_loader)
