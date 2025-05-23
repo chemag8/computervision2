@@ -58,7 +58,7 @@ val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
 # --- Modelo, pérdida, optimizador ---
 model = UNet(n_channels=3, n_classes=2)
-criterion = nn.CrossEntropyLoss()
+criterion = nn.BCEWithLogitsLoss()
 optimizer = optim.Adam(model.parameters(), lr=lr)
 
 # --- Entrenamiento ---
