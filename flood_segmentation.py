@@ -13,7 +13,7 @@ from unet import UNet
 num_epochs= 30
 lr = 1e-5
 test_size = 0.2
-batch_size = 32
+batch_size = 16
 
 # --- Dataset personalizado ---
 class FloodDataset(Dataset):
